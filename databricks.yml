@@ -1,0 +1,19 @@
+bundle:
+  name: clubos-databricks
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-3b10b020-7c21.cloud.databricks.com
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-3b10b020-7c21.cloud.databricks.com
+
+resources:
+  jobs:
+    clubos_monthly_pipeline:
+      source: resources/clubos_pipeline_job.yml
