@@ -87,14 +87,16 @@ def run_month_coverage_check(severity: str = "REQUIRED") -> None:
 def run_rate_bounds_check(severity: str = "REQUIRED") -> None:
     table_name = "clubos.silver.silver_internal_asset_metrics"
     df = spark.read.table(table_name)
-    rate_rows = df.filter(F.col("metric_name").rlike("(rate$|_rate$|recurrence$|bounce_rate$)"))
+    # Exclude recurrence metrics - they are average counts, not rates/percentages
+    # Only check metrics ending in _rate or bounce_rate
+    rate_rows = df.filter(F.col("metric_name").rlike("(_rate$|bounce_rate$)"))
     issue_count = rate_rows.filter((F.col("metric_value") < 0) | (F.col("metric_value") > 1)).count()
     record_check(
         table_name=table_name,
-        check_name="Rate and recurrence metrics bounded between 0 and 1",
+        check_name="Rate metrics bounded between 0 and 1",
         severity=severity,
         issue_count=issue_count,
-        issue_details="Found rate-like metric_value outside [0,1].",
+        issue_details="Found rate metric_value outside [0,1]. Note: recurrence metrics are excluded as they are counts, not rates.",
     )
 
 
@@ -109,7 +111,7 @@ run_rate_bounds_check()
 
 # Persist run log before raising fail-stop
 log_df = spark.createDataFrame(checks).withColumn("run_timestamp", F.current_timestamp())
-log_df.write.format("delta").mode("append").saveAsTable("clubos.silver.silver_data_quality_checks")
+log_df.write.format("delta").mode("append").saveAsTable("clubos.gold.data_quality_checks")
 
 if len(required_failures) > 0:
     failure_message = "Quality gate failed. Required checks did not pass:\n- " + "\n- ".join(required_failures)
